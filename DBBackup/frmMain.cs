@@ -25,42 +25,66 @@ namespace DBBackup
       dropBoxPath += Path.DirectorySeparatorChar + "Dropbox" + Path.DirectorySeparatorChar;
 
       string db = dropBoxPath + "config.db";
-      SQLiteConnection con = new SQLiteConnection("Data Source=" + db);
-      con.Open();
-      SQLiteCommand cmd = con.CreateCommand();
-      cmd.CommandText = "select value from config where key = 'dropbox_path'";
-      
+      string json = dropBoxPath + "info.json";
       string dir = String.Empty;
-      using (SQLiteDataReader dr = cmd.ExecuteReader())
-      {
-        while (dr.Read())
-        {
-          dir = dr.GetString(0);
-        }
-      }
+      FileInfo info = new FileInfo(db);
 
-      if (dir == String.Empty)
+      if (File.Exists(db) && (info.Length > 0))
       {
-        // now we need to read the host.db file and decode it.
-        string hostFile = dropBoxPath + "host.db";
-        string data = String.Empty;
-        using (StreamReader sr = new StreamReader(hostFile))
-        {
-          //string data = sr.ReadToEnd();
-          while ((data = sr.ReadLine()) != null)
-            dir = Base64.Decode(data);
-        }
-      }
+        SQLiteConnection con = new SQLiteConnection("Data Source=" + db);
+        con.Open();
+        SQLiteCommand cmd = con.CreateCommand();
+        cmd.CommandText = "select value from config where key = 'dropbox_path'";
 
-      return dir;
-      /*
-      string dir = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+        using (SQLiteDataReader dr = cmd.ExecuteReader())
+        {
+          while (dr.Read())
+          {
+            dir = dr.GetString(0);
+          }
+        }
+
+        if (dir == String.Empty)
+        {
+          // now we need to read the host.db file and decode it.
+          string hostFile = dropBoxPath + "host.db";
+          string data = String.Empty;
+          using (StreamReader sr = new StreamReader(hostFile))
+          {
+            //string data = sr.ReadToEnd();
+            while ((data = sr.ReadLine()) != null)
+              dir = Base64.Decode(data);
+          }
+        }
+
+        return dir;
+      }
+      else if (File.Exists(json))
+      {
+        string data = File.ReadAllText(json);
+        // Lame JSON "parsing"...
+        string crap = String.Empty;
+        string path = String.Empty;
+        for (int i = 0; i < data.Length; i++)
+        {
+          if (crap.Contains("path") && crap.EndsWith(":"))
+          {
+            if (!(path.Contains("\\") && path.EndsWith(",")))
+              path += data[i].ToString();
+          }
+          else
+            crap += data[i].ToString();
+        }
+        path = path.Replace(@"\\", @"\").Replace("\"", "").Replace(",","").Trim();
+        return path;
+      }
+      
+      dir = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
       // assuming documents exists, windows complains about that
-      if (Directory.Exists(dir + Path.DirectorySeparatorChar + "My Dropbox"))
-        dir += Path.DirectorySeparatorChar + "My Dropbox";
+      if (Directory.Exists(dir + Path.DirectorySeparatorChar + "Dropbox"))
+        dir += Path.DirectorySeparatorChar + "Dropbox";
 
       return dir;
-      */
     }
 
     void checkSettings()
