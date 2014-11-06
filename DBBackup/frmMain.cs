@@ -21,17 +21,34 @@ namespace DBBackup
 
     string guessDirectory()
     {
-      string dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-      dir += Path.DirectorySeparatorChar + "Dropbox" + Path.DirectorySeparatorChar + "config.db";
-      SQLiteConnection con = new SQLiteConnection("Data Source=" + dir);
+      string dropBoxPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+      dropBoxPath += Path.DirectorySeparatorChar + "Dropbox" + Path.DirectorySeparatorChar;
+
+      string db = dropBoxPath + "config.db";
+      SQLiteConnection con = new SQLiteConnection("Data Source=" + db);
       con.Open();
       SQLiteCommand cmd = con.CreateCommand();
       cmd.CommandText = "select value from config where key = 'dropbox_path'";
+      
+      string dir = String.Empty;
       using (SQLiteDataReader dr = cmd.ExecuteReader())
       {
         while (dr.Read())
         {
           dir = dr.GetString(0);
+        }
+      }
+
+      if (dir == String.Empty)
+      {
+        // now we need to read the host.db file and decode it.
+        string hostFile = dropBoxPath + "host.db";
+        string data = String.Empty;
+        using (StreamReader sr = new StreamReader(hostFile))
+        {
+          //string data = sr.ReadToEnd();
+          while ((data = sr.ReadLine()) != null)
+            dir = Base64.Decode(data);
         }
       }
 
